@@ -1,4 +1,4 @@
-package go_litematica
+package litematica
 
 import (
 	"github.com/Tnze/go-mc/level/block"

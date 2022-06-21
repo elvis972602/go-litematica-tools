@@ -1,4 +1,4 @@
-package go_litematica
+package litematica
 
 import (
 	"compress/gzip"
