@@ -6,7 +6,6 @@ import (
 	"github.com/Tnze/go-mc/level/block"
 	"github.com/Tnze/go-mc/nbt"
 	"io"
-	"log"
 	"math/bits"
 	"time"
 )
@@ -54,11 +53,7 @@ func NewLitematicaProject(name string, x, y, z int) *litematicaProject {
 }
 
 func LoadLitematicaFromFile(f io.Reader) (*litematicaProject, error) {
-	reader, err := gzip.NewReader(f)
-	if err != nil {
-		log.Fatal(err)
-	}
-	project, err := LoadLitematica(reader)
+	project, err := LoadLitematica(f)
 	if err != nil {
 		return nil, err
 	}
@@ -161,13 +156,14 @@ func (p *litematicaProject) Encode(w io.Writer) error {
 		Regions:              p.getRegion(),
 	}
 	project.Metadata.TimeModified = time.Now().UnixMilli()
+
 	gw := gzip.NewWriter(w)
+	defer gw.Close()
 	err := nbt.NewEncoder(gw).Encode(project, "")
 	if err != nil {
 		return err
 	}
 	return nil
-
 }
 
 func (p *litematicaProject) getRegion() map[string]Region {
