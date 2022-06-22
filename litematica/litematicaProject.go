@@ -46,7 +46,8 @@ func NewLitematicaProject(name string, x, y, z int) *litematicaProject {
 			TotalVolume:   int32(x * y * z),
 		},
 		regionName: name,
-		data:       newEmptyBitArray(x * y * z),
+		regionSize: Vec3D{int32(x), int32(y), int32(z)},
+		data:       NewEmptyBitArray(x * y * z),
 		palette:    newBlockStatePalette(),
 		entity:     newEntityContainer(),
 	}
@@ -66,9 +67,17 @@ func LoadLitematicaFromFile(f io.Reader) (*litematicaProject, error) {
 		regionName: regName,
 		regionSize: reg.Size,
 		palette:    newBlockStatePaletteWithData(reg.BlockStatePalette),
-		data:       newLitematicaBitArray(bits.Len(uint(len(reg.BlockStatePalette))), int(project.Metadata.TotalVolume), reg.BlockStates),
+		data:       NewLitematicaBitArray(bits.Len(uint(len(reg.BlockStatePalette))), int(project.Metadata.TotalVolume), reg.BlockStates),
 		entity:     newEntityContainerWithData(reg.Entities),
 	}, nil
+}
+
+func LoadLitematicaFromNBT(name string, f io.Reader) (*litematicaProject, error) {
+	n, err := LoadNBT(f)
+	if err != nil {
+		return nil, err
+	}
+	return n.ToLitematica(name), nil
 }
 
 func (p *litematicaProject) getIndex(x, y, z int) int {
@@ -83,7 +92,7 @@ func (p *litematicaProject) GetBlock(x, y, z int) BlockState {
 	if !p.metaData.EnclosingSize.outOfSize(x, y, z) {
 		return p.palette.value(p.data.getBlock(int64(p.getIndex(x, y, z))))
 	} else {
-		panic(fmt.Sprintf("GetBlock out of range : enclosingSize: %v, x: %d, y: %d, z: %d", p.metaData.EnclosingSize, x, y, z))
+		panic(fmt.Sprintf("GetBlock out of range : enclosingSize: %v,Pos: %d, %d, %d", p.metaData.EnclosingSize, x, y, z))
 	}
 }
 
@@ -96,7 +105,7 @@ func (p *litematicaProject) SetBlock(x, y, z int, b block.Block) {
 		}
 		p.data.setBlock(int64(p.getIndex(x, y, z)), p.palette.id(NewBlockState(b)))
 	} else {
-		panic(fmt.Sprintf("SetBlock out of range : enclosingSize: %v, x: %d, y: %d, z: %d", p.metaData.EnclosingSize, x, y, z))
+		panic(fmt.Sprintf("SetBlock out of range : enclosingSize: %v,Pos: %d, %d, %d", p.metaData.EnclosingSize, x, y, z))
 	}
 }
 
@@ -178,6 +187,41 @@ func (p *litematicaProject) getRegion() map[string]Region {
 	}
 	rs[p.regionName] = r
 	return rs
+}
+
+func (p *litematicaProject) ToNBT() *NBTFile {
+	var b []Blocks
+	for x := 0; x < p.XRange(); x++ {
+		for y := 0; y < p.YRange(); y++ {
+			for z := 0; z < p.ZRange(); z++ {
+				s := int32(p.data.getBlock(int64(p.getIndex(x, y, z))))
+				if s != 0 {
+					b = append(b, Blocks{Pos: []int32{int32(x), int32(y), int32(z)}, State: s - 1})
+				}
+			}
+		}
+	}
+	return &NBTFile{
+		Blocks:      b,
+		Entities:    p.entity.entity,
+		Palette:     p.Palette()[1:],
+		Size:        []int32{p.regionSize.X, p.regionSize.Y, p.regionSize.Z},
+		Author:      p.metaData.Author,
+		DataVersion: int32(minecraftDataVersion),
+	}
+}
+
+func (p *litematicaProject) toBlocks(start, end int, out chan Blocks) {
+	for x := start; x <= end && x < p.XRange(); x++ {
+		for y := 0; y < p.YRange(); y++ {
+			for z := 0; z < p.ZRange(); z++ {
+				state := int32(p.data.getBlock(int64(p.getIndex(x, y, z))))
+				if state != 0 {
+					out <- Blocks{Pos: []int32{int32(x), int32(y), int32(z)}, State: int32(p.data.getBlock(int64(p.getIndex(x, y, z))))}
+				}
+			}
+		}
+	}
 }
 
 const air = "minecraft:air"
