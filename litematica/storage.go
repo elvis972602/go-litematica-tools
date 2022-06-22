@@ -23,7 +23,7 @@ type bitArray struct {
 	entrySize int
 }
 
-func newEmptyBitArray(EntrySize int) *bitArray {
+func NewEmptyBitArray(EntrySize int) *bitArray {
 	b := &bitArray{
 		data:          nil,
 		bitsPerEntry:  defaultBits,
@@ -38,7 +38,7 @@ func newEmptyBitArray(EntrySize int) *bitArray {
 	return b
 }
 
-func newLitematicaBitArray(bits, EntrySize int, data []int64) *bitArray {
+func NewLitematicaBitArray(bits, EntrySize int, data []int64) *bitArray {
 	b := &bitArray{
 		data:          data,
 		bitsPerEntry:  bits,
@@ -51,7 +51,7 @@ func newLitematicaBitArray(bits, EntrySize int, data []int64) *bitArray {
 	if data != nil {
 		if len(data) != dataLen {
 			log.Println(bits * EntrySize)
-			panic(fmt.Errorf("data length error %d %d", len(data), dataLen))
+			panic(fmt.Errorf("data length error %d, %d", len(data), dataLen))
 		}
 	} else {
 		b.data = make([]int64, dataLen)
@@ -77,15 +77,12 @@ func (b *bitArray) getAt(index int64) int {
 	endArrIndex := int(((index+1)*int64(b.bitsPerEntry) - 1) >> 6)
 	startBitOffset := int(startOffset & 0x3F)
 
+	if len(b.data) <= startArrIndex {
+		return 0
+	}
 	if startArrIndex == endArrIndex {
-		if len(b.data) <= startArrIndex {
-			return 0
-		}
 		return int(int64(uint(b.data[startArrIndex])>>uint(startBitOffset)) & b.maxEntryValue)
 	} else {
-		if len(b.data) <= startArrIndex {
-			return 0
-		}
 		endOffset := 64 - startBitOffset
 		return int((int64(uint(b.data[startArrIndex])>>uint(startBitOffset)) | b.data[endArrIndex]<<endOffset) & b.maxEntryValue)
 	}
@@ -115,7 +112,7 @@ func (b *bitArray) setAt(index int64, value int) {
 }
 
 func (b *bitArray) resize(bits, EntrySize int) bitArray {
-	n := newLitematicaBitArray(bits, EntrySize, nil)
+	n := NewLitematicaBitArray(bits, EntrySize, nil)
 	for i := 0; i < b.entrySize; i++ {
 		n.setAt(int64(i), b.getAt(int64(i)))
 	}

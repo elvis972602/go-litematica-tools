@@ -3,7 +3,6 @@ package litematica
 import (
 	"compress/gzip"
 	"fmt"
-	"github.com/Tnze/go-mc/level/block"
 	"github.com/Tnze/go-mc/nbt"
 	"io"
 	"log"
@@ -57,11 +56,6 @@ type Vec3D struct {
 	X int32 `nbt:"x"`
 	Y int32 `nbt:"y"`
 	Z int32 `nbt:"z"`
-}
-
-type BlockState struct {
-	Name       string
-	Properties block.Block
 }
 
 func LoadLitematica(r io.Reader) (*Project, error) {

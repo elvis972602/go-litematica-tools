@@ -2,6 +2,11 @@ package litematica
 
 import "github.com/Tnze/go-mc/level/block"
 
+type BlockState struct {
+	Name       string
+	Properties block.Block
+}
+
 func NewBlockState(b block.Block) BlockState {
 	return BlockState{
 		Name:       b.ID(),
