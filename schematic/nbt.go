@@ -1,4 +1,4 @@
-package litematica
+package schematic
 
 import (
 	"compress/gzip"
@@ -7,7 +7,7 @@ import (
 	"io"
 )
 
-type NBTFile struct {
+type Nbt struct {
 	Blocks      []Blocks     `nbt:"blocks"`
 	Entities    []Entity     `nbt:"entities"`
 	Palette     []BlockState `nbt:"palette"`
@@ -16,7 +16,7 @@ type NBTFile struct {
 	DataVersion int32
 }
 
-type NBTFileWithRawMessage struct {
+type NbtWithRawMessage struct {
 	Blocks      []Blocks `nbt:"blocks"`
 	Entities    []Entity `nbt:"entities"`
 	Palette     []state  `nbt:"palette"`
@@ -34,30 +34,24 @@ type Blocks struct {
 	State int32   `nbt:"state"`
 }
 
-type state struct {
-	Name       string
-	Properties nbt.RawMessage
-}
-
-func LoadNBT(r io.Reader) (*NBTFile, error) {
-	var temp *NBTFileWithRawMessage
+func LoadNBT(r io.Reader) (*Nbt, error) {
+	var temp *NbtWithRawMessage
 	reader, err := gzip.NewReader(r)
 	_, err = nbt.NewDecoder(reader).Decode(&temp)
 	if err != nil {
 		return nil, err
 	}
-	return &NBTFile{
+	return &Nbt{
 		Blocks:      temp.Blocks,
 		Entities:    temp.Entities,
-		Palette:     stateToBlock(temp.Palette),
+		Palette:     parseBlock(temp.Palette),
 		Size:        temp.Size,
 		Author:      temp.Author,
 		DataVersion: temp.DataVersion,
 	}, nil
 }
 
-func (n *NBTFile) Encode(w io.Writer) error {
-
+func (n *Nbt) Encode(w io.Writer) error {
 	gw := gzip.NewWriter(w)
 	defer gw.Close()
 	err := nbt.NewEncoder(gw).Encode(n, "")
@@ -67,8 +61,8 @@ func (n *NBTFile) Encode(w io.Writer) error {
 	return nil
 }
 
-func (n *NBTFile) ToLitematica(name string) *litematicaProject {
-	l := NewLitematicaProject(name, int(n.Size[0]), int(n.Size[1]), int(n.Size[2]))
+func (n *Nbt) toProject(name string) *Project {
+	l := NewProject(name, int(n.Size[0]), int(n.Size[1]), int(n.Size[2]))
 	for _, v := range n.Blocks {
 		l.SetBlock(int(v.Pos[0]), int(v.Pos[1]), int(v.Pos[2]), n.Palette[v.State].Properties)
 	}
@@ -76,7 +70,7 @@ func (n *NBTFile) ToLitematica(name string) *litematicaProject {
 	return l
 }
 
-func stateToBlock(states []state) []BlockState {
+func parseBlock(states []state) []BlockState {
 	var blockPalette []BlockState
 	for _, state := range states {
 		b := block.FromID[state.Name]

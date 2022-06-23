@@ -1,6 +1,14 @@
-package litematica
+package schematic
 
-import "github.com/Tnze/go-mc/level/block"
+import (
+	"github.com/Tnze/go-mc/level/block"
+	"github.com/Tnze/go-mc/nbt"
+)
+
+type state struct {
+	Name       string
+	Properties nbt.RawMessage
+}
 
 type BlockState struct {
 	Name       string

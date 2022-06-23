@@ -1,4 +1,4 @@
-package litematica
+package schematic
 
 import (
 	"compress/gzip"
@@ -6,16 +6,17 @@ import (
 	"github.com/Tnze/go-mc/nbt"
 	"io"
 	"log"
+	"math/bits"
 )
 
-type ProjectWithRawMessage struct {
+type LitematicWithRawMessage struct {
 	Metadata             Metadata
 	MinecraftDataVersion int32
 	Version              int32
 	Regions              map[string]RegionWithRawMessage
 }
 
-type Project struct {
+type Litematic struct {
 	Metadata             Metadata
 	MinecraftDataVersion int32
 	Version              int32
@@ -58,28 +59,28 @@ type Vec3D struct {
 	Z int32 `nbt:"z"`
 }
 
-func LoadLitematica(r io.Reader) (*Project, error) {
-	var project *ProjectWithRawMessage
+func LoadLitematica(r io.Reader) (*Litematic, error) {
+	var project *LitematicWithRawMessage
 	reader, err := gzip.NewReader(r)
 	if err != nil {
 		log.Fatal(err)
 	}
 	_, err = nbt.NewDecoder(reader).Decode(&project)
-	return &Project{
+	return &Litematic{
 		Metadata:             project.Metadata,
 		MinecraftDataVersion: project.MinecraftDataVersion,
 		Version:              project.Version,
-		Regions:              toRegion(project.Regions),
+		Regions:              parseRegion(project.Regions),
 	}, err
 }
 
-func toRegion(rr map[string]RegionWithRawMessage) map[string]Region {
+func parseRegion(rr map[string]RegionWithRawMessage) map[string]Region {
 	var m = make(map[string]Region)
 	for s, r := range rr {
 		m[s] = Region{
-			BlockStatePalette: stateToBlock(r.BlockStatePalette),
+			BlockStatePalette: parseBlock(r.BlockStatePalette),
 			TileEntities:      r.TileEntities,
-			Entities:          toEntity(r.Entities),
+			Entities:          parseEntity(r.Entities),
 			Position:          r.Position,
 			Size:              r.Size,
 			BlockStates:       r.BlockStates,
@@ -88,7 +89,7 @@ func toRegion(rr map[string]RegionWithRawMessage) map[string]Region {
 	return m
 }
 
-func toEntity(e []nbt.RawMessage) []Entity {
+func parseEntity(e []nbt.RawMessage) []Entity {
 	var entities []Entity
 	for _, i := range e {
 		if i.Type != nbt.TagEnd {
@@ -108,9 +109,34 @@ func toEntity(e []nbt.RawMessage) []Entity {
 	return entities
 }
 
-func (p *Project) GetRegion() (Region, string, error) {
-	for k, r := range p.Regions {
-		return r, k, nil //there is always at least one region theoretically
+func (l *Litematic) toProject() *Project {
+	reg, regName, err := l.GetRegion()
+	if err != nil {
+		log.Fatal(err)
 	}
-	return Region{}, "", fmt.Errorf("there is no region in this priject") //empty
+	return &Project{
+		metaData:   l.Metadata,
+		regionName: regName,
+		regionSize: reg.Size,
+		palette:    newBlockStatePaletteWithData(reg.BlockStatePalette),
+		data:       NewLitematicaBitArray(bits.Len(uint(len(reg.BlockStatePalette))), int(l.Metadata.TotalVolume), reg.BlockStates),
+		entity:     newEntityContainerWithData(reg.Entities),
+	}
+}
+
+func (l *Litematic) Encode(w io.Writer) error {
+	gw := gzip.NewWriter(w)
+	defer gw.Close()
+	err := nbt.NewEncoder(gw).Encode(l, "")
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (l *Litematic) GetRegion() (Region, string, error) {
+	for k, r := range l.Regions {
+		return r, k, nil
+	}
+	return Region{}, "", fmt.Errorf("there is no region in this litematic file") //empty
 }

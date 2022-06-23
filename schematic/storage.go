@@ -1,8 +1,7 @@
-package litematica
+package schematic
 
 import (
 	"fmt"
-	"log"
 	"math"
 	"math/bits"
 )
@@ -50,7 +49,6 @@ func NewLitematicaBitArray(bits, EntrySize int, data []int64) *bitArray {
 
 	if data != nil {
 		if len(data) != dataLen {
-			log.Println(bits * EntrySize)
 			panic(fmt.Errorf("data length error %d, %d", len(data), dataLen))
 		}
 	} else {
@@ -61,10 +59,6 @@ func NewLitematicaBitArray(bits, EntrySize int, data []int64) *bitArray {
 
 func (b *bitArray) BitsPerEntry() int {
 	return b.bitsPerEntry
-}
-
-func (b *bitArray) Data() []int64 {
-	return b.data
 }
 
 func (b *bitArray) getBlock(index int64) int {
@@ -90,7 +84,6 @@ func (b *bitArray) getAt(index int64) int {
 
 func (b *bitArray) setBlock(index int64, value int) {
 	if bits.Len(uint(value)) > b.BitsPerEntry() {
-		//log.Println("resize")
 		*b = b.resize(b.bitsPerEntry+1, b.entrySize)
 	}
 	b.setAt(index, value)

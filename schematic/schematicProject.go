@@ -1,4 +1,4 @@
-package litematica
+package schematic
 
 import (
 	"compress/gzip"
@@ -6,7 +6,8 @@ import (
 	"github.com/Tnze/go-mc/level/block"
 	"github.com/Tnze/go-mc/nbt"
 	"io"
-	"math/bits"
+	"os"
+	"strings"
 	"time"
 )
 
@@ -17,7 +18,7 @@ var (
 	version              = 6
 )
 
-type litematicaProject struct {
+type Project struct {
 	metaData Metadata
 
 	//Region's key
@@ -32,8 +33,8 @@ type litematicaProject struct {
 	entity *entityContainer
 }
 
-func NewLitematicaProject(name string, x, y, z int) *litematicaProject {
-	return &litematicaProject{
+func NewProject(name string, x, y, z int) *Project {
+	return &Project{
 		metaData: Metadata{
 			Author:        author,
 			Description:   description,
@@ -53,116 +54,120 @@ func NewLitematicaProject(name string, x, y, z int) *litematicaProject {
 	}
 }
 
-func LoadLitematicaFromFile(f io.Reader) (*litematicaProject, error) {
-	project, err := LoadLitematica(f)
-	if err != nil {
-		return nil, err
+func Load(file *os.File) (*Project, error) {
+	if strings.HasSuffix(file.Name(), ".litematic") {
+		return LoadFromLitematic(file)
+
+	} else if strings.HasSuffix(file.Name(), ".nbt") {
+		return LoadFromNbt(file.Name(), file)
+	} else {
+		return nil, fmt.Errorf("unsuppot file format")
 	}
-	reg, regName, err := project.GetRegion()
-	if err != nil {
-		return nil, err
-	}
-	return &litematicaProject{
-		metaData:   project.Metadata,
-		regionName: regName,
-		regionSize: reg.Size,
-		palette:    newBlockStatePaletteWithData(reg.BlockStatePalette),
-		data:       NewLitematicaBitArray(bits.Len(uint(len(reg.BlockStatePalette))), int(project.Metadata.TotalVolume), reg.BlockStates),
-		entity:     newEntityContainerWithData(reg.Entities),
-	}, nil
 }
 
-func LoadLitematicaFromNBT(name string, f io.Reader) (*litematicaProject, error) {
+func LoadFromLitematic(f io.Reader) (*Project, error) {
+	l, err := LoadLitematica(f)
+	if err != nil {
+		return nil, err
+	}
+	return l.toProject(), nil
+}
+
+func LoadFromNbt(name string, f io.Reader) (*Project, error) {
 	n, err := LoadNBT(f)
 	if err != nil {
 		return nil, err
 	}
-	return n.ToLitematica(name), nil
+	return n.toProject(name), nil
 }
 
-func (p *litematicaProject) getIndex(x, y, z int) int {
+func (p *Project) Index(x, y, z int) int {
 	return p.metaData.EnclosingSize.getIndex(x, y, z)
 }
 
-func (p *litematicaProject) Palette() []BlockState {
+func (p *Project) Data() []int64 {
+	return p.data.data
+}
+
+func (p *Project) Palette() []BlockState {
 	return p.palette.palette
 }
 
-func (p *litematicaProject) GetBlock(x, y, z int) BlockState {
+func (p *Project) GetBlock(x, y, z int) BlockState {
 	if !p.metaData.EnclosingSize.outOfSize(x, y, z) {
-		return p.palette.value(p.data.getBlock(int64(p.getIndex(x, y, z))))
+		return p.palette.value(p.data.getBlock(int64(p.Index(x, y, z))))
 	} else {
 		panic(fmt.Sprintf("GetBlock out of range : enclosingSize: %v,Pos: %d, %d, %d", p.metaData.EnclosingSize, x, y, z))
 	}
 }
 
-func (p *litematicaProject) SetBlock(x, y, z int, b block.Block) {
+func (p *Project) SetBlock(x, y, z int, b block.Block) {
 	if !p.metaData.EnclosingSize.outOfSize(x, y, z) {
 		if p.GetBlock(x, y, z).Name == air || b.ID() != air {
 			p.metaData.TotalBlocks++
 		} else if b.ID() == air {
 			p.metaData.TotalBlocks--
 		}
-		p.data.setBlock(int64(p.getIndex(x, y, z)), p.palette.id(NewBlockState(b)))
+		p.data.setBlock(int64(p.Index(x, y, z)), p.palette.id(NewBlockState(b)))
 	} else {
 		panic(fmt.Sprintf("SetBlock out of range : enclosingSize: %v,Pos: %d, %d, %d", p.metaData.EnclosingSize, x, y, z))
 	}
 }
 
-func (p *litematicaProject) Contain(block BlockState) bool {
+func (p *Project) Contain(block BlockState) bool {
 	return p.palette.contain(block)
 }
 
-func (p *litematicaProject) AddEntity(e Entity) {
+func (p *Project) AddEntity(e Entity) {
 	p.entity.addEntity(e)
 }
 
-func (p *litematicaProject) SetAuthor(author string) {
+func (p *Project) SetAuthor(author string) {
 	p.metaData.Author = author
 }
 
-func (p *litematicaProject) SetDescription(description ...any) {
+func (p *Project) SetDescription(description ...any) {
 	p.metaData.Description = fmt.Sprint(description...)
 }
 
-func (p *litematicaProject) SetName(name string) {
+func (p *Project) SetName(name string) {
 	p.metaData.Name = name
 }
 
-func (p *litematicaProject) SetRegionsName(name string) {
+func (p *Project) SetRegionsName(name string) {
 	p.regionName = name
 }
 
-func (p *litematicaProject) SetMinecraftDataVersion(v int) {
+func (p *Project) SetMinecraftDataVersion(v int) {
 	minecraftDataVersion = v
 }
 
-func (p *litematicaProject) SetVersion(v int) {
+func (p *Project) SetVersion(v int) {
 	version = v
 }
 
-func (p *litematicaProject) XRange() int {
+func (p *Project) XRange() int {
 	return int(p.metaData.EnclosingSize.X)
 }
 
-func (p *litematicaProject) YRange() int {
+func (p *Project) YRange() int {
 	return int(p.metaData.EnclosingSize.Y)
 }
 
-func (p *litematicaProject) ZRange() int {
+func (p *Project) ZRange() int {
 	return int(p.metaData.EnclosingSize.Z)
 }
 
-func (p *litematicaProject) Size() Vec3D {
+func (p *Project) Size() Vec3D {
 	return p.metaData.EnclosingSize
 }
 
-func (p *litematicaProject) Encode(w io.Writer) error {
-	project := Project{
+func (p *Project) Encode(w io.Writer) error {
+	project := Litematic{
 		Metadata:             p.metaData,
 		MinecraftDataVersion: int32(minecraftDataVersion),
 		Version:              int32(version),
-		Regions:              p.getRegion(),
+		Regions:              p.region(),
 	}
 	project.Metadata.TimeModified = time.Now().UnixMilli()
 
@@ -175,7 +180,7 @@ func (p *litematicaProject) Encode(w io.Writer) error {
 	return nil
 }
 
-func (p *litematicaProject) getRegion() map[string]Region {
+func (p *Project) region() map[string]Region {
 	rs := make(map[string]Region)
 	r := Region{
 		BlockStatePalette: p.palette.palette,
@@ -189,38 +194,36 @@ func (p *litematicaProject) getRegion() map[string]Region {
 	return rs
 }
 
-func (p *litematicaProject) ToNBT() *NBTFile {
+func (p *Project) Litematic() *Litematic {
+	project := &Litematic{
+		Metadata:             p.metaData,
+		MinecraftDataVersion: int32(minecraftDataVersion),
+		Version:              int32(version),
+		Regions:              p.region(),
+	}
+	project.Metadata.TimeModified = time.Now().UnixMilli()
+	return project
+}
+
+func (p *Project) Nbt() *Nbt {
 	var b []Blocks
 	for x := 0; x < p.XRange(); x++ {
 		for y := 0; y < p.YRange(); y++ {
 			for z := 0; z < p.ZRange(); z++ {
-				s := int32(p.data.getBlock(int64(p.getIndex(x, y, z))))
+				s := int32(p.data.getBlock(int64(p.Index(x, y, z))))
 				if s != 0 {
 					b = append(b, Blocks{Pos: []int32{int32(x), int32(y), int32(z)}, State: s - 1})
 				}
 			}
 		}
 	}
-	return &NBTFile{
+	return &Nbt{
 		Blocks:      b,
 		Entities:    p.entity.entity,
 		Palette:     p.Palette()[1:],
 		Size:        []int32{p.regionSize.X, p.regionSize.Y, p.regionSize.Z},
 		Author:      p.metaData.Author,
 		DataVersion: int32(minecraftDataVersion),
-	}
-}
-
-func (p *litematicaProject) toBlocks(start, end int, out chan Blocks) {
-	for x := start; x <= end && x < p.XRange(); x++ {
-		for y := 0; y < p.YRange(); y++ {
-			for z := 0; z < p.ZRange(); z++ {
-				state := int32(p.data.getBlock(int64(p.getIndex(x, y, z))))
-				if state != 0 {
-					out <- Blocks{Pos: []int32{int32(x), int32(y), int32(z)}, State: int32(p.data.getBlock(int64(p.getIndex(x, y, z))))}
-				}
-			}
-		}
 	}
 }
 

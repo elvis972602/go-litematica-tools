@@ -1,4 +1,4 @@
-package litematica
+package schematic
 
 // Entity TODO:Add Entity Structure
 type Entity interface {
