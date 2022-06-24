@@ -59,7 +59,7 @@ type Vec3D struct {
 	Z int32 `nbt:"z"`
 }
 
-func LoadLitematica(r io.Reader) (*Litematic, error) {
+func ReadLitematica(r io.Reader) (*Litematic, error) {
 	var project *LitematicWithRawMessage
 	reader, err := gzip.NewReader(r)
 	if err != nil {
@@ -78,35 +78,15 @@ func parseRegion(rr map[string]RegionWithRawMessage) map[string]Region {
 	var m = make(map[string]Region)
 	for s, r := range rr {
 		m[s] = Region{
-			BlockStatePalette: parseBlock(r.BlockStatePalette),
+			BlockStatePalette: parseBlocks(r.BlockStatePalette),
 			TileEntities:      r.TileEntities,
-			Entities:          parseEntity(r.Entities),
+			Entities:          parseEntities(r.Entities),
 			Position:          r.Position,
 			Size:              r.Size,
 			BlockStates:       r.BlockStates,
 		}
 	}
 	return m
-}
-
-func parseEntity(e []nbt.RawMessage) []Entity {
-	var entities []Entity
-	for _, i := range e {
-		if i.Type != nbt.TagEnd {
-			id := ID{}
-			err := i.Unmarshal(&id)
-			if err != nil {
-				panic(err)
-			}
-			entity := ByID[id.ID]
-			err = i.Unmarshal(&entity)
-			if err != nil {
-				panic(err)
-			}
-			entities = append(entities, entity)
-		}
-	}
-	return entities
 }
 
 func (l *Litematic) toProject() *Project {

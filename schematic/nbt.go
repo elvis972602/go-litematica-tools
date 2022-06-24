@@ -2,7 +2,6 @@ package schematic
 
 import (
 	"compress/gzip"
-	"github.com/Tnze/go-mc/level/block"
 	"github.com/Tnze/go-mc/nbt"
 	"io"
 )
@@ -17,11 +16,11 @@ type Nbt struct {
 }
 
 type NbtWithRawMessage struct {
-	Blocks      []Blocks `nbt:"blocks"`
-	Entities    []Entity `nbt:"entities"`
-	Palette     []state  `nbt:"palette"`
-	Size        []int32  `nbt:"size" nbt_type:"list"`
-	Author      string   `nbt:"author"`
+	Blocks      []Blocks         `nbt:"blocks"`
+	Entities    []nbt.RawMessage `nbt:"entities"`
+	Palette     []state          `nbt:"palette"`
+	Size        []int32          `nbt:"size" nbt_type:"list"`
+	Author      string           `nbt:"author"`
 	DataVersion int32
 }
 
@@ -34,7 +33,7 @@ type Blocks struct {
 	State int32   `nbt:"state"`
 }
 
-func LoadNBT(r io.Reader) (*Nbt, error) {
+func ReadNbt(r io.Reader) (*Nbt, error) {
 	var temp *NbtWithRawMessage
 	reader, err := gzip.NewReader(r)
 	_, err = nbt.NewDecoder(reader).Decode(&temp)
@@ -43,8 +42,8 @@ func LoadNBT(r io.Reader) (*Nbt, error) {
 	}
 	return &Nbt{
 		Blocks:      temp.Blocks,
-		Entities:    temp.Entities,
-		Palette:     parseBlock(temp.Palette),
+		Entities:    parseEntities(temp.Entities),
+		Palette:     parseBlocks(temp.Palette),
 		Size:        temp.Size,
 		Author:      temp.Author,
 		DataVersion: temp.DataVersion,
@@ -68,19 +67,4 @@ func (n *Nbt) toProject(name string) *Project {
 	}
 	l.metaData.Author = n.Author
 	return l
-}
-
-func parseBlock(states []state) []BlockState {
-	var blockPalette []BlockState
-	for _, state := range states {
-		b := block.FromID[state.Name]
-		if state.Properties.Type != nbt.TagEnd {
-			err := state.Properties.Unmarshal(&b)
-			if err != nil {
-				panic(err)
-			}
-		}
-		blockPalette = append(blockPalette, BlockState{Name: state.Name, Properties: b})
-	}
-	return blockPalette
 }

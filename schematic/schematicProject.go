@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -66,7 +67,7 @@ func Load(file *os.File) (*Project, error) {
 }
 
 func LoadFromLitematic(f io.Reader) (*Project, error) {
-	l, err := LoadLitematica(f)
+	l, err := ReadLitematica(f)
 	if err != nil {
 		return nil, err
 	}
@@ -74,7 +75,7 @@ func LoadFromLitematic(f io.Reader) (*Project, error) {
 }
 
 func LoadFromNbt(name string, f io.Reader) (*Project, error) {
-	n, err := LoadNBT(f)
+	n, err := ReadNbt(f)
 	if err != nil {
 		return nil, err
 	}
@@ -94,7 +95,7 @@ func (p *Project) Palette() []BlockState {
 }
 
 func (p *Project) GetBlock(x, y, z int) BlockState {
-	if !p.metaData.EnclosingSize.outOfSize(x, y, z) {
+	if !p.metaData.EnclosingSize.outOfRange(x, y, z) {
 		return p.palette.value(p.data.getBlock(int64(p.Index(x, y, z))))
 	} else {
 		panic(fmt.Sprintf("GetBlock out of range : enclosingSize: %v,Pos: %d, %d, %d", p.metaData.EnclosingSize, x, y, z))
@@ -102,7 +103,7 @@ func (p *Project) GetBlock(x, y, z int) BlockState {
 }
 
 func (p *Project) SetBlock(x, y, z int, b block.Block) {
-	if !p.metaData.EnclosingSize.outOfSize(x, y, z) {
+	if !p.metaData.EnclosingSize.outOfRange(x, y, z) {
 		if p.GetBlock(x, y, z).Name == air || b.ID() != air {
 			p.metaData.TotalBlocks++
 		} else if b.ID() == air {
@@ -160,6 +161,10 @@ func (p *Project) ZRange() int {
 
 func (p *Project) Size() Vec3D {
 	return p.metaData.EnclosingSize
+}
+
+func (p *Project) ChangeMaterial(from, to block.Block) {
+	p.palette.changeMaterial(NewBlockState(from), NewBlockState(to))
 }
 
 func (p *Project) Encode(w io.Writer) error {
@@ -232,6 +237,7 @@ const air = "minecraft:air"
 type blockStatePalette struct {
 	paletteMap map[BlockState]int
 	palette    []BlockState
+	sync.RWMutex
 }
 
 func newBlockStatePalette() *blockStatePalette {
@@ -256,6 +262,8 @@ func newBlockStatePaletteWithData(data []BlockState) *blockStatePalette {
 }
 
 func (p *blockStatePalette) id(block BlockState) int {
+	p.Lock()
+	defer p.Unlock()
 	if _, ok := p.paletteMap[block]; !ok {
 		p.paletteMap[block] = len(p.palette)
 		p.palette = append(p.palette, block)
@@ -264,12 +272,28 @@ func (p *blockStatePalette) id(block BlockState) int {
 }
 
 func (p *blockStatePalette) value(index int) BlockState {
+	p.Lock()
+	defer p.Unlock()
 	return p.palette[index]
 }
 
 func (p *blockStatePalette) contain(block BlockState) bool {
+	p.Lock()
+	defer p.Unlock()
 	_, ok := p.paletteMap[block]
 	return ok
+}
+
+func (p *blockStatePalette) changeMaterial(from, to BlockState) {
+	p.Lock()
+	defer p.Unlock()
+	index, ok := p.paletteMap[from]
+	if !ok {
+		return
+	}
+	p.palette[index] = to
+	delete(p.paletteMap, from)
+	p.paletteMap[to] = index
 }
 
 type entityContainer struct {
