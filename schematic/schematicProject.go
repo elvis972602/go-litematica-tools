@@ -19,6 +19,14 @@ var (
 	version              = 6
 )
 
+func SetDefaultMinecraftDataVersion(v int) {
+	minecraftDataVersion = version
+}
+
+func SetDefaultVersion(v int) {
+	version = v
+}
+
 type Project struct {
 	metaData Metadata
 
@@ -55,7 +63,7 @@ func NewProject(name string, x, y, z int) *Project {
 	}
 }
 
-func Load(file *os.File) (*Project, error) {
+func LoadFromFile(file *os.File) (*Project, error) {
 	if strings.HasSuffix(file.Name(), ".litematic") {
 		return LoadFromLitematic(file)
 
@@ -67,7 +75,7 @@ func Load(file *os.File) (*Project, error) {
 }
 
 func LoadFromLitematic(f io.Reader) (*Project, error) {
-	l, err := ReadLitematica(f)
+	l, err := ReadLitematicaFile(f)
 	if err != nil {
 		return nil, err
 	}
@@ -75,7 +83,7 @@ func LoadFromLitematic(f io.Reader) (*Project, error) {
 }
 
 func LoadFromNbt(name string, f io.Reader) (*Project, error) {
-	n, err := ReadNbt(f)
+	n, err := ReadNbtFile(f)
 	if err != nil {
 		return nil, err
 	}
@@ -95,24 +103,22 @@ func (p *Project) Palette() []BlockState {
 }
 
 func (p *Project) GetBlock(x, y, z int) BlockState {
-	if !p.metaData.EnclosingSize.outOfRange(x, y, z) {
-		return p.palette.value(p.data.getBlock(int64(p.Index(x, y, z))))
-	} else {
+	if p.metaData.EnclosingSize.outOfRange(x, y, z) {
 		panic(fmt.Sprintf("GetBlock out of range : enclosingSize: %v,Pos: %d, %d, %d", p.metaData.EnclosingSize, x, y, z))
 	}
+	return p.palette.value(p.data.getBlock(int64(p.Index(x, y, z))))
 }
 
 func (p *Project) SetBlock(x, y, z int, b block.Block) {
-	if !p.metaData.EnclosingSize.outOfRange(x, y, z) {
-		if p.GetBlock(x, y, z).Name == air || b.ID() != air {
-			p.metaData.TotalBlocks++
-		} else if b.ID() == air {
-			p.metaData.TotalBlocks--
-		}
-		p.data.setBlock(int64(p.Index(x, y, z)), p.palette.id(NewBlockState(b)))
-	} else {
+	if p.metaData.EnclosingSize.outOfRange(x, y, z) {
 		panic(fmt.Sprintf("SetBlock out of range : enclosingSize: %v,Pos: %d, %d, %d", p.metaData.EnclosingSize, x, y, z))
 	}
+	if p.GetBlock(x, y, z).Name == air || b.ID() != air {
+		p.metaData.TotalBlocks++
+	} else if b.ID() == air {
+		p.metaData.TotalBlocks--
+	}
+	p.data.setBlock(int64(p.Index(x, y, z)), p.palette.id(NewBlockState(b)))
 }
 
 func (p *Project) Contain(block BlockState) bool {
@@ -167,6 +173,7 @@ func (p *Project) ChangeMaterial(from, to block.Block) {
 	p.palette.changeMaterial(NewBlockState(from), NewBlockState(to))
 }
 
+// Encode default encode litematic file
 func (p *Project) Encode(w io.Writer) error {
 	project := Litematic{
 		Metadata:             p.metaData,

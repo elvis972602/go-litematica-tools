@@ -59,7 +59,7 @@ type Vec3D struct {
 	Z int32 `nbt:"z"`
 }
 
-func ReadLitematica(r io.Reader) (*Litematic, error) {
+func ReadLitematicaFile(r io.Reader) (*Litematic, error) {
 	var project *LitematicWithRawMessage
 	reader, err := gzip.NewReader(r)
 	if err != nil {
@@ -99,7 +99,7 @@ func (l *Litematic) toProject() *Project {
 		regionName: regName,
 		regionSize: reg.Size,
 		palette:    newBlockStatePaletteWithData(reg.BlockStatePalette),
-		data:       NewLitematicaBitArray(bits.Len(uint(len(reg.BlockStatePalette))), int(l.Metadata.TotalVolume), reg.BlockStates),
+		data:       NewBitArray(bits.Len(uint(len(reg.BlockStatePalette))), int(l.Metadata.TotalVolume), reg.BlockStates),
 		entity:     newEntityContainerWithData(reg.Entities),
 	}
 }

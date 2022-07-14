@@ -12,7 +12,7 @@ type state struct {
 
 type BlockState struct {
 	Name       string
-	Properties block.Block
+	Properties block.Block `nbt_omitempty:"true"`
 }
 
 func NewBlockState(b block.Block) BlockState {

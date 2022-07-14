@@ -37,7 +37,7 @@ func NewEmptyBitArray(EntrySize int) *bitArray {
 	return b
 }
 
-func NewLitematicaBitArray(bits, EntrySize int, data []int64) *bitArray {
+func NewBitArray(bits, EntrySize int, data []int64) *bitArray {
 	b := &bitArray{
 		data:          data,
 		bitsPerEntry:  bits,
@@ -105,7 +105,7 @@ func (b *bitArray) setAt(index int64, value int) {
 }
 
 func (b *bitArray) resize(bits, EntrySize int) bitArray {
-	n := NewLitematicaBitArray(bits, EntrySize, nil)
+	n := NewBitArray(bits, EntrySize, nil)
 	for i := 0; i < b.entrySize; i++ {
 		n.setAt(int64(i), b.getAt(int64(i)))
 	}

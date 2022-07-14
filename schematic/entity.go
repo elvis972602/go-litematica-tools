@@ -1,13 +1,14 @@
 package schematic
 
-// Entity TODO:Add Entity Structure
+type ID struct {
+	ID string `nbt:"id"`
+}
+
 type Entity interface {
 	ID() string
 }
 
-type ID struct {
-	ID string `nbt:"id"`
-}
+//TODO:Add Entity Structure
 
 type GlowItemFrame struct {
 	Air            int16

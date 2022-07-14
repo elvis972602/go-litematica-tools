@@ -33,7 +33,7 @@ type Blocks struct {
 	State int32   `nbt:"state"`
 }
 
-func ReadNbt(r io.Reader) (*Nbt, error) {
+func ReadNbtFile(r io.Reader) (*Nbt, error) {
 	var temp *NbtWithRawMessage
 	reader, err := gzip.NewReader(r)
 	_, err = nbt.NewDecoder(reader).Decode(&temp)
