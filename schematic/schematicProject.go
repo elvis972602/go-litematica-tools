@@ -7,7 +7,7 @@ import (
 	"github.com/Tnze/go-mc/nbt"
 	"io"
 	"os"
-	"strings"
+	"path/filepath"
 	"sync"
 	"time"
 )
@@ -64,13 +64,13 @@ func NewProject(name string, x, y, z int) *Project {
 }
 
 func LoadFromFile(file *os.File) (*Project, error) {
-	if strings.HasSuffix(file.Name(), ".litematic") {
+	ext := filepath.Ext(file.Name())
+	if ext == ".litematic" {
 		return LoadFromLitematic(file)
-
-	} else if strings.HasSuffix(file.Name(), ".nbt") {
+	} else if ext == ".nbt" {
 		return LoadFromNbt(file.Name(), file)
 	} else {
-		return nil, fmt.Errorf("unsuppot file format")
+		return nil, fmt.Errorf("unsuppot file format: %s", ext)
 	}
 }
 
