@@ -13,25 +13,37 @@ import (
 )
 
 var (
-	author               = "Author"
-	description          = ""
-	minecraftDataVersion = 2975
-	version              = 6
+	defaultAuthor               = "Author"
+	defaultDescription          = ""
+	defaultMinecraftDataVersion = 2975
+	defaultVersion              = 6
 )
 
+func SetDefaultAuthor(s string) {
+	defaultAuthor = s
+}
+
+func SetDefaultDescription(s string) {
+	defaultDescription = s
+}
+
 func SetDefaultMinecraftDataVersion(v int) {
-	minecraftDataVersion = version
+	defaultMinecraftDataVersion = v
 }
 
 func SetDefaultVersion(v int) {
-	version = v
+	defaultVersion = v
 }
 
 type Project struct {
-	metaData Metadata
+	MetaData Metadata
+
+	MinecraftDataVersion int32
+
+	Version int32
 
 	//Region's key
-	regionName string
+	RegionName string
 
 	regionSize Vec3D
 
@@ -44,9 +56,9 @@ type Project struct {
 
 func NewProject(name string, x, y, z int) *Project {
 	return &Project{
-		metaData: Metadata{
-			Author:        author,
-			Description:   description,
+		MetaData: Metadata{
+			Author:        defaultAuthor,
+			Description:   defaultDescription,
 			EnclosingSize: Vec3D{int32(x), int32(y), int32(z)},
 			Name:          name,
 			RegionCount:   1,
@@ -55,11 +67,13 @@ func NewProject(name string, x, y, z int) *Project {
 			TotalBlocks:   0,
 			TotalVolume:   int32(x * y * z),
 		},
-		regionName: name,
-		regionSize: Vec3D{int32(x), int32(y), int32(z)},
-		data:       NewEmptyBitArray(x * y * z),
-		palette:    newBlockStatePalette(),
-		entity:     newEntityContainer(),
+		MinecraftDataVersion: int32(defaultMinecraftDataVersion),
+		Version:              int32(defaultVersion),
+		RegionName:           name,
+		regionSize:           Vec3D{int32(x), int32(y), int32(z)},
+		data:                 NewEmptyBitArray(x * y * z),
+		palette:              newBlockStatePalette(),
+		entity:               newEntityContainer(),
 	}
 }
 
@@ -90,8 +104,8 @@ func LoadFromNbt(name string, f io.Reader) (*Project, error) {
 	return n.toProject(name), nil
 }
 
-func (p *Project) Index(x, y, z int) int {
-	return p.metaData.EnclosingSize.getIndex(x, y, z)
+func (p *Project) index(x, y, z int) int {
+	return p.MetaData.EnclosingSize.getIndex(x, y, z)
 }
 
 func (p *Project) Data() []int64 {
@@ -103,22 +117,22 @@ func (p *Project) Palette() []BlockState {
 }
 
 func (p *Project) GetBlock(x, y, z int) BlockState {
-	if p.metaData.EnclosingSize.outOfRange(x, y, z) {
-		panic(fmt.Sprintf("GetBlock out of range : enclosingSize: %v,Pos: %d, %d, %d", p.metaData.EnclosingSize, x, y, z))
+	if p.MetaData.EnclosingSize.outOfRange(x, y, z) {
+		panic(fmt.Sprintf("GetBlock out of range : enclosingSize: %v,Pos: %d, %d, %d", p.MetaData.EnclosingSize, x, y, z))
 	}
-	return p.palette.value(p.data.getBlock(int64(p.Index(x, y, z))))
+	return p.palette.value(p.data.getBlock(int64(p.index(x, y, z))))
 }
 
 func (p *Project) SetBlock(x, y, z int, b block.Block) {
-	if p.metaData.EnclosingSize.outOfRange(x, y, z) {
-		panic(fmt.Sprintf("SetBlock out of range : enclosingSize: %v,Pos: %d, %d, %d", p.metaData.EnclosingSize, x, y, z))
+	if p.MetaData.EnclosingSize.outOfRange(x, y, z) {
+		panic(fmt.Sprintf("SetBlock out of range : enclosingSize: %v,Pos: %d, %d, %d", p.MetaData.EnclosingSize, x, y, z))
 	}
 	if p.GetBlock(x, y, z).Name == air || b.ID() != air {
-		p.metaData.TotalBlocks++
+		p.MetaData.TotalBlocks++
 	} else if b.ID() == air {
-		p.metaData.TotalBlocks--
+		p.MetaData.TotalBlocks--
 	}
-	p.data.setBlock(int64(p.Index(x, y, z)), p.palette.id(NewBlockState(b)))
+	p.data.setBlock(int64(p.index(x, y, z)), p.palette.id(NewBlockState(b)))
 }
 
 func (p *Project) Contain(block BlockState) bool {
@@ -129,44 +143,28 @@ func (p *Project) AddEntity(e Entity) {
 	p.entity.addEntity(e)
 }
 
-func (p *Project) SetAuthor(author string) {
-	p.metaData.Author = author
-}
-
-func (p *Project) SetDescription(description ...any) {
-	p.metaData.Description = fmt.Sprint(description...)
-}
-
-func (p *Project) SetName(name string) {
-	p.metaData.Name = name
-}
-
-func (p *Project) SetRegionsName(name string) {
-	p.regionName = name
-}
-
 func (p *Project) SetMinecraftDataVersion(v int) {
-	minecraftDataVersion = v
+	defaultMinecraftDataVersion = v
 }
 
 func (p *Project) SetVersion(v int) {
-	version = v
+	defaultVersion = v
 }
 
 func (p *Project) XRange() int {
-	return int(p.metaData.EnclosingSize.X)
+	return int(p.MetaData.EnclosingSize.X)
 }
 
 func (p *Project) YRange() int {
-	return int(p.metaData.EnclosingSize.Y)
+	return int(p.MetaData.EnclosingSize.Y)
 }
 
 func (p *Project) ZRange() int {
-	return int(p.metaData.EnclosingSize.Z)
+	return int(p.MetaData.EnclosingSize.Z)
 }
 
 func (p *Project) Size() Vec3D {
-	return p.metaData.EnclosingSize
+	return p.MetaData.EnclosingSize
 }
 
 func (p *Project) ChangeMaterial(from, to block.Block) {
@@ -175,17 +173,9 @@ func (p *Project) ChangeMaterial(from, to block.Block) {
 
 // Encode default encode litematic file
 func (p *Project) Encode(w io.Writer) error {
-	project := Litematic{
-		Metadata:             p.metaData,
-		MinecraftDataVersion: int32(minecraftDataVersion),
-		Version:              int32(version),
-		Regions:              p.region(),
-	}
-	project.Metadata.TimeModified = time.Now().UnixMilli()
-
 	gw := gzip.NewWriter(w)
 	defer gw.Close()
-	err := nbt.NewEncoder(gw).Encode(project, "")
+	err := nbt.NewEncoder(gw).Encode(p.Litematic(), "")
 	if err != nil {
 		return err
 	}
@@ -202,15 +192,15 @@ func (p *Project) region() map[string]Region {
 		Size:              p.regionSize,
 		BlockStates:       p.data.data,
 	}
-	rs[p.regionName] = r
+	rs[p.RegionName] = r
 	return rs
 }
 
 func (p *Project) Litematic() *Litematic {
 	project := &Litematic{
-		Metadata:             p.metaData,
-		MinecraftDataVersion: int32(minecraftDataVersion),
-		Version:              int32(version),
+		Metadata:             p.MetaData,
+		MinecraftDataVersion: p.MinecraftDataVersion,
+		Version:              p.Version,
 		Regions:              p.region(),
 	}
 	project.Metadata.TimeModified = time.Now().UnixMilli()
@@ -222,7 +212,7 @@ func (p *Project) Nbt() *Nbt {
 	for x := 0; x < p.XRange(); x++ {
 		for y := 0; y < p.YRange(); y++ {
 			for z := 0; z < p.ZRange(); z++ {
-				s := int32(p.data.getBlock(int64(p.Index(x, y, z))))
+				s := int32(p.data.getBlock(int64(p.index(x, y, z))))
 				if s != 0 {
 					b = append(b, Blocks{Pos: []int32{int32(x), int32(y), int32(z)}, State: s - 1})
 				}
@@ -234,8 +224,8 @@ func (p *Project) Nbt() *Nbt {
 		Entities:    p.entity.entity,
 		Palette:     p.Palette()[1:],
 		Size:        []int32{p.regionSize.X, p.regionSize.Y, p.regionSize.Z},
-		Author:      p.metaData.Author,
-		DataVersion: int32(minecraftDataVersion),
+		Author:      p.MetaData.Author,
+		DataVersion: int32(defaultMinecraftDataVersion),
 	}
 }
 

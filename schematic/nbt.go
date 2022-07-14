@@ -34,19 +34,19 @@ type Blocks struct {
 }
 
 func ReadNbtFile(r io.Reader) (*Nbt, error) {
-	var temp *NbtWithRawMessage
+	var n *NbtWithRawMessage
 	reader, err := gzip.NewReader(r)
-	_, err = nbt.NewDecoder(reader).Decode(&temp)
+	_, err = nbt.NewDecoder(reader).Decode(&n)
 	if err != nil {
 		return nil, err
 	}
 	return &Nbt{
-		Blocks:      temp.Blocks,
-		Entities:    parseEntities(temp.Entities),
-		Palette:     parseBlocks(temp.Palette),
-		Size:        temp.Size,
-		Author:      temp.Author,
-		DataVersion: temp.DataVersion,
+		Blocks:      n.Blocks,
+		Entities:    parseEntities(n.Entities),
+		Palette:     parseBlocks(n.Palette),
+		Size:        n.Size,
+		Author:      n.Author,
+		DataVersion: n.DataVersion,
 	}, nil
 }
 
@@ -65,6 +65,8 @@ func (n *Nbt) toProject(name string) *Project {
 	for _, v := range n.Blocks {
 		l.SetBlock(int(v.Pos[0]), int(v.Pos[1]), int(v.Pos[2]), n.Palette[v.State].Properties)
 	}
-	l.metaData.Author = n.Author
+	l.MetaData.Author = n.Author
+	l.MinecraftDataVersion = int32(defaultMinecraftDataVersion)
+	l.Version = int32(defaultVersion)
 	return l
 }

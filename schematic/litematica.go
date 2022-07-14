@@ -60,17 +60,17 @@ type Vec3D struct {
 }
 
 func ReadLitematicaFile(r io.Reader) (*Litematic, error) {
-	var project *LitematicWithRawMessage
+	var l *LitematicWithRawMessage
 	reader, err := gzip.NewReader(r)
 	if err != nil {
 		log.Fatal(err)
 	}
-	_, err = nbt.NewDecoder(reader).Decode(&project)
+	_, err = nbt.NewDecoder(reader).Decode(&l)
 	return &Litematic{
-		Metadata:             project.Metadata,
-		MinecraftDataVersion: project.MinecraftDataVersion,
-		Version:              project.Version,
-		Regions:              parseRegion(project.Regions),
+		Metadata:             l.Metadata,
+		MinecraftDataVersion: l.MinecraftDataVersion,
+		Version:              l.Version,
+		Regions:              parseRegion(l.Regions),
 	}, err
 }
 
@@ -95,12 +95,14 @@ func (l *Litematic) toProject() *Project {
 		log.Fatal(err)
 	}
 	return &Project{
-		metaData:   l.Metadata,
-		regionName: regName,
-		regionSize: reg.Size,
-		palette:    newBlockStatePaletteWithData(reg.BlockStatePalette),
-		data:       NewBitArray(bits.Len(uint(len(reg.BlockStatePalette))), int(l.Metadata.TotalVolume), reg.BlockStates),
-		entity:     newEntityContainerWithData(reg.Entities),
+		MetaData:             l.Metadata,
+		MinecraftDataVersion: l.MinecraftDataVersion,
+		Version:              l.Version,
+		RegionName:           regName,
+		regionSize:           reg.Size,
+		palette:              newBlockStatePaletteWithData(reg.BlockStatePalette),
+		data:                 NewBitArray(bits.Len(uint(len(reg.BlockStatePalette))), int(l.Metadata.TotalVolume), reg.BlockStates),
+		entity:               newEntityContainerWithData(reg.Entities),
 	}
 }
 
