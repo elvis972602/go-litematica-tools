@@ -143,14 +143,6 @@ func (p *Project) AddEntity(e Entity) {
 	p.entity.addEntity(e)
 }
 
-func (p *Project) SetMinecraftDataVersion(v int) {
-	defaultMinecraftDataVersion = v
-}
-
-func (p *Project) SetVersion(v int) {
-	defaultVersion = v
-}
-
 func (p *Project) XRange() int {
 	return int(p.MetaData.EnclosingSize.X)
 }
