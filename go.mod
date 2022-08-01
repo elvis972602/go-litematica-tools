@@ -1,4 +1,4 @@
-module go-litematica-tools
+module github.com/elvis972602/go-litematica-tools
 
 go 1.18
 
