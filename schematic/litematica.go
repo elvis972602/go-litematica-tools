@@ -101,7 +101,7 @@ func (l *Litematic) toProject() *Project {
 		RegionName:           regName,
 		regionSize:           reg.Size,
 		palette:              newBlockStatePaletteWithData(reg.BlockStatePalette),
-		data:                 NewBitArray(bits.Len(uint(len(reg.BlockStatePalette))), int(l.Metadata.TotalVolume), reg.BlockStates),
+		data:                 NewBitArray(bits.Len(uint(len(reg.BlockStatePalette)-1)), int(l.Metadata.TotalVolume), reg.BlockStates),
 		entity:               newEntityContainerWithData(reg.Entities),
 	}
 }
