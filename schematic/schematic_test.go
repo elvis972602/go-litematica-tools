@@ -85,7 +85,7 @@ func TestEncodeLitematic(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	project.Litematic().Encode(fw)
+	project.Encode(fw)
 
 	f, err := os.Open("test.litematic")
 	if err != nil {
