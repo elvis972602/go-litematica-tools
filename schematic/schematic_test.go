@@ -101,7 +101,28 @@ func TestEncodeLitematic(t *testing.T) {
 			t.Fatalf("Error, pos: %v, wrong block: %s, correct blocks: %s", k, p.GetBlock(k.x, k.y, k.z).Properties.ID(), v.ID())
 		}
 	}
+}
 
+func TestDecodeLitematic(t *testing.T) {
+	f, err := os.Open("test.litematic")
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err := LoadFromFile(f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	count := 0
+	for x := 0; x < p.XRange(); x++ {
+		for y := 0; y < p.YRange(); y++ {
+			for z := 0; z < p.ZRange(); z++ {
+				_ = p.GetBlock(x, y, z).Properties.ID()
+				count++
+			}
+		}
+	}
+	t.Logf("Blocks count: %v", count)
+	t.Log(p)
 }
 
 func randInt(min, max int) int {

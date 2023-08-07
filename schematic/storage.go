@@ -6,9 +6,9 @@ import (
 	"math/bits"
 )
 
-const defaultBits = 1
+const defaultBits = 2
 
-type bitArray struct {
+type BitArray struct {
 	data []int64
 
 	//bitsPerEntry Number of bits an entry takes up
@@ -22,8 +22,8 @@ type bitArray struct {
 	entrySize int
 }
 
-func NewEmptyBitArray(EntrySize int) *bitArray {
-	b := &bitArray{
+func NewEmptyBitArray(EntrySize int) *BitArray {
+	b := &BitArray{
 		data:          nil,
 		bitsPerEntry:  defaultBits,
 		maxEntryValue: (1 << defaultBits) - 1,
@@ -37,8 +37,9 @@ func NewEmptyBitArray(EntrySize int) *bitArray {
 	return b
 }
 
-func NewBitArray(bits, EntrySize int, data []int64) *bitArray {
-	b := &bitArray{
+func NewBitArray(bits, EntrySize int, data []int64) *BitArray {
+	bits = max(defaultBits, bits)
+	b := &BitArray{
 		data:          data,
 		bitsPerEntry:  bits,
 		maxEntryValue: (1 << bits) - 1,
@@ -57,15 +58,15 @@ func NewBitArray(bits, EntrySize int, data []int64) *bitArray {
 	return b
 }
 
-func (b *bitArray) BitsPerEntry() int {
+func (b *BitArray) BitsPerEntry() int {
 	return b.bitsPerEntry
 }
 
-func (b *bitArray) getBlock(index int64) int {
+func (b *BitArray) getBlock(index int64) int {
 	return b.getAt(index)
 }
 
-func (b *bitArray) getAt(index int64) int {
+func (b *BitArray) getAt(index int64) int {
 	startOffset := index * int64(b.bitsPerEntry)
 	startArrIndex := int(startOffset >> 6) // startOffset / 64
 	endArrIndex := int(((index+1)*int64(b.bitsPerEntry) - 1) >> 6)
@@ -82,14 +83,14 @@ func (b *bitArray) getAt(index int64) int {
 	}
 }
 
-func (b *bitArray) setBlock(index int64, value int) {
+func (b *BitArray) setBlock(index int64, value int) {
 	if bits.Len(uint(value)) > b.BitsPerEntry() {
 		*b = b.resize(b.bitsPerEntry+1, b.entrySize)
 	}
 	b.setAt(index, value)
 }
 
-func (b *bitArray) setAt(index int64, value int) {
+func (b *BitArray) setAt(index int64, value int) {
 	startOffset := index * int64(b.bitsPerEntry)
 	startArrIndex := int(startOffset >> 6)
 	endArrIndex := int(((index+1)*int64(b.bitsPerEntry) - 1) >> 6)
@@ -104,7 +105,7 @@ func (b *bitArray) setAt(index int64, value int) {
 	}
 }
 
-func (b *bitArray) resize(bits, EntrySize int) bitArray {
+func (b *BitArray) resize(bits, EntrySize int) BitArray {
 	n := NewBitArray(bits, EntrySize, nil)
 	for i := 0; i < b.entrySize; i++ {
 		n.setAt(int64(i), b.getAt(int64(i)))

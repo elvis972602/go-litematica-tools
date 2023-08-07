@@ -47,7 +47,7 @@ type Project struct {
 
 	regionSize Vec3D
 
-	data *bitArray
+	data *BitArray
 
 	palette *blockStatePalette
 
