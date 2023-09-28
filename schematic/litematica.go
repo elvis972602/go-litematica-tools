@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/Tnze/go-mc/nbt"
 	"io"
-	"log"
 	"math/bits"
 )
 
@@ -63,7 +62,7 @@ func ReadLitematicaFile(r io.Reader) (*Litematic, error) {
 	var l *LitematicWithRawMessage
 	reader, err := gzip.NewReader(r)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	defer reader.Close()
 	_, err = nbt.NewDecoder(reader).Decode(&l)
@@ -93,10 +92,10 @@ func parseRegion(rr map[string]RegionWithRawMessage) map[string]Region {
 	return m
 }
 
-func (l *Litematic) toProject() *Project {
+func (l *Litematic) toProject() (*Project, error) {
 	reg, regName, err := l.GetRegion()
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	return &Project{
 		MetaData:             l.Metadata,
@@ -107,7 +106,7 @@ func (l *Litematic) toProject() *Project {
 		palette:              newBlockStatePaletteWithData(reg.BlockStatePalette),
 		data:                 NewBitArray(bits.Len(uint(len(reg.BlockStatePalette)-1)), int(l.Metadata.TotalVolume), reg.BlockStates),
 		entity:               newEntityContainerWithData(reg.Entities),
-	}
+	}, nil
 }
 
 func (l *Litematic) Encode(w io.Writer) error {

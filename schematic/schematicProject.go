@@ -93,7 +93,7 @@ func LoadFromLitematic(f io.Reader) (*Project, error) {
 	if err != nil {
 		return nil, err
 	}
-	return l.toProject(), nil
+	return l.toProject()
 }
 
 func LoadFromNbt(name string, f io.Reader) (*Project, error) {

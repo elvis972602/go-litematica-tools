@@ -37,6 +37,9 @@ type Blocks struct {
 func ReadNbtFile(r io.Reader) (*Nbt, error) {
 	var n *NbtWithRawMessage
 	reader, err := gzip.NewReader(r)
+	if err != nil {
+		return nil, err
+	}
 	defer reader.Close()
 	_, err = nbt.NewDecoder(reader).Decode(&n)
 	if err != nil {
