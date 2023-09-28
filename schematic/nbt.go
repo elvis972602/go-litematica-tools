@@ -4,6 +4,7 @@ import (
 	"compress/gzip"
 	"github.com/Tnze/go-mc/nbt"
 	"io"
+	"path/filepath"
 )
 
 type Nbt struct {
@@ -36,6 +37,7 @@ type Blocks struct {
 func ReadNbtFile(r io.Reader) (*Nbt, error) {
 	var n *NbtWithRawMessage
 	reader, err := gzip.NewReader(r)
+	defer reader.Close()
 	_, err = nbt.NewDecoder(reader).Decode(&n)
 	if err != nil {
 		return nil, err
@@ -61,6 +63,8 @@ func (n *Nbt) Encode(w io.Writer) error {
 }
 
 func (n *Nbt) toProject(name string) *Project {
+	name = filepath.Base(name)
+	name = name[:len(name)-len(filepath.Ext(name))]
 	l := NewProject(name, int(n.Size[0]), int(n.Size[1]), int(n.Size[2]))
 	for _, v := range n.Blocks {
 		l.SetBlock(int(v.Pos[0]), int(v.Pos[1]), int(v.Pos[2]), n.Palette[v.State].Properties)

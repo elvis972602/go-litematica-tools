@@ -65,13 +65,17 @@ func ReadLitematicaFile(r io.Reader) (*Litematic, error) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer reader.Close()
 	_, err = nbt.NewDecoder(reader).Decode(&l)
+	if err != nil {
+		return nil, err
+	}
 	return &Litematic{
 		Metadata:             l.Metadata,
 		MinecraftDataVersion: l.MinecraftDataVersion,
 		Version:              l.Version,
 		Regions:              parseRegion(l.Regions),
-	}, err
+	}, nil
 }
 
 func parseRegion(rr map[string]RegionWithRawMessage) map[string]Region {
