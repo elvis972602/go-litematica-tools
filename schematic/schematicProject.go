@@ -116,9 +116,11 @@ func (p *Project) Palette() []BlockState {
 	return p.palette.palette
 }
 
+var Air = NewBlockState(block.Air{})
+
 func (p *Project) GetBlock(x, y, z int) BlockState {
 	if p.MetaData.EnclosingSize.outOfRange(x, y, z) {
-		panic(fmt.Sprintf("GetBlock out of range : enclosingSize: %v,Pos: %d, %d, %d", p.MetaData.EnclosingSize, x, y, z))
+		return Air // return air if out of range
 	}
 	return p.palette.value(p.data.getBlock(int64(p.index(x, y, z))))
 }
@@ -127,9 +129,10 @@ func (p *Project) SetBlock(x, y, z int, b block.Block) {
 	if p.MetaData.EnclosingSize.outOfRange(x, y, z) {
 		panic(fmt.Sprintf("SetBlock out of range : enclosingSize: %v,Pos: %d, %d, %d", p.MetaData.EnclosingSize, x, y, z))
 	}
-	if p.GetBlock(x, y, z).Name == air || b.ID() != air {
+	var oldState = p.GetBlock(x, y, z)
+	if oldState.Name == air && b.ID() != air {
 		p.MetaData.TotalBlocks++
-	} else if b.ID() == air {
+	} else if oldState.Name != air && b.ID() == air {
 		p.MetaData.TotalBlocks--
 	}
 	p.data.setBlock(int64(p.index(x, y, z)), p.palette.id(NewBlockState(b)))
